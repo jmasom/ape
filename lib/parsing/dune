@@ -1,0 +1,4 @@
+(ocamllex expr_lexer repl_expr_lexer)
+(menhir
+ (modules expr_parser repl_expr_parser)
+ (infer true))
