@@ -1,7 +1,7 @@
 open Utils
 open Flags
 
-type 'a t constraint 'a = [< any ]
+type 'a t
 type grammar
 
 (** A type-identified collection of rules. *)
