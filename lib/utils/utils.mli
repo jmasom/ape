@@ -7,5 +7,6 @@ val rev_map_concat : ('a -> 'b list) -> 'a list -> 'b list
 
 module Choice : module type of Choice
 module Flags : module type of Flags
+module Named : module type of Named
 module Nonempty_list : module type of Nonempty_list
 module String_map : Map.S with type key = string

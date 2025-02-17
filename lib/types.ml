@@ -27,3 +27,7 @@ type repl_ast =
 | Trepl_repeated of repl_ast * int
 | Trepl_seq of repl_ast list
 
+(* compiled generators/matching expressions *)
+type expr = < gen_word : string option ; to_re : Re.t >
+type rule = < expr; gen_chain : string Utils.Nonempty_list.t option >
+

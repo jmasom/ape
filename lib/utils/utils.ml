@@ -47,5 +47,6 @@ let rev_map_concat f = rev_map_concat [] f
 
 module Choice = Choice
 module Flags = Flags
+module Named = Named
 module Nonempty_list = Nonempty_list
 module String_map = Map.Make (String)
