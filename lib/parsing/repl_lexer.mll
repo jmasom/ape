@@ -1,5 +1,5 @@
 {
-open Repl_expr_parser
+open Repl_parser
 exception SyntaxError of string
 }
 

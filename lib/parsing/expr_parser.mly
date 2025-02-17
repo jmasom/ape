@@ -1,4 +1,4 @@
-%{open Expr_ast%}
+%{open Types%}
 
 %token <string> LITERAL
 %token <string> ID
@@ -38,15 +38,15 @@
 %token EOF
 
 %start main
-%type <t> main
-%type <t> expression
-%type <t> choice_expression
-%type <t> sequence_expression
-%type <t> labeled_expression
-%type <t> optional_expression
-%type <t> repeated_expression
+%type <expr_ast> main
+%type <expr_ast> expression
+%type <expr_ast> choice_expression
+%type <expr_ast> sequence_expression
+%type <expr_ast> labeled_expression
+%type <expr_ast> optional_expression
+%type <expr_ast> repeated_expression
 %type <repeat_bounds> repeat_bounds
-%type <t> primary_expression
+%type <expr_ast> primary_expression
 %%
 
 let main :=
@@ -57,7 +57,7 @@ let expression :=
 
 let choice_expression :=
   | ~ = sequence_expression; <>
-  | ~ = separated_nonempty_list(PIPE, weighted_expression); < Choice  >
+  | ~ = separated_nonempty_list(PIPE, weighted_expression); < Texpr_choice >
 
 let weighted_expression :=
   | exp = sequence_expression; { (exp, None) }
@@ -65,29 +65,29 @@ let weighted_expression :=
 
 let sequence_expression :=
   | ~ = labeled_expression; <>
-  | head = labeled_expression; tail = labeled_expression+; { Seq (head :: tail) }
+  | head = labeled_expression; tail = labeled_expression+; { Texpr_seq (head :: tail) }
 
 let labeled_expression :=
   | ~ = optional_expression; <>
-  | label = ID; COLON; exp = optional_expression; { Labeled (label, exp) }
+  | label = ID; COLON; exp = optional_expression; { Texpr_labeled (label, exp) }
 
 let optional_expression :=
   | ~ = repeated_expression; <>
-  | exp = primary_expression; Q_MARK; prob = option(float); { Optional (exp, prob) }
+  | exp = primary_expression; Q_MARK; prob = option(float); { Texpr_optional (exp, prob) }
 
 let repeated_expression :=
   | ~ = primary_expression; <>
   | exp = primary_expression; OPEN_BRACE; bounds = repeat_bounds; CLOSE_BRACE;
-    { Repeated (exp, bounds) }
+    { Texpr_repeated (exp, bounds) }
 
 let repeat_bounds :=
-  | min = option(INT); COMMA; max = INT; { Range (min, max) }
-  | count = INT; { Count count }
+  | min = option(INT); COMMA; max = INT; { Trb_range (min, max) }
+  | count = INT; { Trb_count count }
 
 let primary_expression :=
-  | ~ = LITERAL; < Literal >
-  | ~ = ID; < Rule_ref >
-  | OPEN_BRACK; ~ = feature*; CLOSE_BRACK; < Feature_spec >
+  | ~ = LITERAL; < Texpr_literal >
+  | ~ = ID; < Texpr_rule_ref >
+  | OPEN_BRACK; ~ = feature*; CLOSE_BRACK; < Texpr_feature_spec >
   | OPEN_PAREN; exp = expression; CLOSE_PAREN; { exp }
 
 let feature ==

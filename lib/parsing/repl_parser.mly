@@ -1,4 +1,4 @@
-%{open Repl_expr_ast%}
+%{open Types%}
 
 %token <string> LITERAL
 %token <string> ID
@@ -22,11 +22,11 @@
 %token EOF
 
 %start main
-%type <t> main
-%type <t> expression
-%type <t> sequence_expression
-%type <t> repeated_expression
-%type <t> primary_expression
+%type <repl_ast> main
+%type <repl_ast> expression
+%type <repl_ast> sequence_expression
+%type <repl_ast> repeated_expression
+%type <repl_ast> primary_expression
 %%
 
 let main :=
@@ -37,21 +37,21 @@ let expression :=
 
 let sequence_expression :=
   | ~ = repeated_expression; <>
-  | head = repeated_expression; tail = repeated_expression+; { Seq (head :: tail) }
+  | head = repeated_expression; tail = repeated_expression+; { Trepl_seq (head :: tail) }
 
 let repeated_expression :=
   | ~ = feat_transformation_expression; <>
   | exp = feat_transformation_expression; OPEN_BRACE; count = INT; CLOSE_BRACE;
-    { Repeated (exp, count) }
+    { Trepl_repeated (exp, count) }
 
 let feat_transformation_expression :=
   | ~ = primary_expression; <>
   | exp = primary_expression; ARROW; feature_spec = feature_spec;
-    { Feature_spec_appl (exp, feature_spec) }
+    { Trepl_feature_spec_appl (exp, feature_spec) }
 
 let primary_expression :=
-  | ~ = LITERAL; < Literal >
-  | ~ = ID; < Label_ref >
+  | ~ = LITERAL; < Trepl_literal >
+  | ~ = ID; < Trepl_label_ref >
   | OPEN_PAREN; exp = expression; CLOSE_PAREN; { exp }
 
 let feature_spec ==
