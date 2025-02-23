@@ -1,42 +1,39 @@
 type 'a t' = Empty | Leaf of float * 'a | Branch of float * 'a t' * 'a t'
-
 type 'a t = 'a t' * 'a list
 
 let weight_at = function
   | Empty -> 0.
   | Leaf (weight, _) | Branch (weight, _, _) -> weight
 
-let empty = Empty, []
+let empty = (Empty, [])
 
-let join node1 node2 =
+let join n1 n2 =
   (* Combine branches and ensure left weight is smaller *)
-  let weight1 = weight_at node1 in
-  let weight2 = weight_at node2 in
-  let left_node, right_node =
-    if weight1 < weight2 then (node1, node2) else (node2, node1)
-  in
-  Branch (weight1 +. weight2, left_node, right_node)
+  let w1 = weight_at n1 in
+  let w2 = weight_at n2 in
+  let left_node, right_node = if w1 < w2 then (n1, n2) else (n2, n1) in
+  Branch (w1 +. w2, left_node, right_node)
 
-let rec add_node node = function
-  | Empty -> node
+let rec add_node n = function
+  | Empty -> n
   | Leaf (total_weight, _) as top_node ->
-      Branch (total_weight +. weight_at node, top_node, node)
+      Branch (total_weight +. weight_at n, top_node, n)
   | Branch (_, left_tree, right_tree) as top_node ->
       (* Minimize diff between branch weights *)
-      let node1, node2 =
-        if weight_at node >= weight_at left_tree +. weight_at right_tree then
-          (top_node, node)
-        else (add_node node left_tree, right_tree)
+      let n1, n2 =
+        if weight_at n >= weight_at left_tree +. weight_at right_tree then
+          (top_node, n)
+        else (add_node n left_tree, right_tree)
       in
-      join node1 node2
+      join n1 n2
 
 let add value weight (tree, nodes) =
-  add_node (Leaf (Float.max weight 0., value)) tree, value :: nodes
+  (add_node (Leaf (Float.max weight 0., value)) tree, value :: nodes)
 
 let of_weighted_list weighted_vals =
   List.fold_left (fun n (v, w) -> add v w n) empty weighted_vals
 
-let to_list (_, nodes) = List.rev nodes
+let to_list (_, ns) = List.rev ns
 
 let rec value_at_target target tree =
   if target >= weight_at tree then None

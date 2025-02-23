@@ -1,5 +1,5 @@
 val ( let* ) : 'a option -> ('a -> 'b option) -> 'b option
-val ( !! ) : 'a Lazy.t -> 'a
+val ( |? ) : 'a option -> 'a -> 'a
 val ( % ) : ('b -> 'c) -> ('a -> 'b) -> 'a -> 'c
 val for_all_map : ('a -> 'b option) -> 'a list -> 'b list option
 val map_concat : ('a -> 'b list) -> 'a list -> 'b list
