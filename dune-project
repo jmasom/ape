@@ -5,20 +5,20 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github jmasom/ape))
 
-(authors "Author Name")
+(authors "Joseph Masom <dajaysta@gmail.com>")
 
-(maintainers "Maintainer Name")
+(maintainers "Joseph Masom <dajaysta@gmail.com>")
 
-(license LICENSE)
+(license MIT)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/jmasom/ape)
 
 (package
  (name ape)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Yet another random word generator")
+ (description "Ape is a random word generator targeted to conlangers. It supports matchable rules, phonological features, and sound changes.")
  (depends
   ocaml
   dune
@@ -29,7 +29,7 @@
     (>= 0.26.2)
     :build)))
  (tags
-  (topics "to describe" your project)))
+  (topics "word generation" conlanging)))
 
 (using menhir 3.0)
 

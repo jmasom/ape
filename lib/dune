@@ -2,9 +2,7 @@
 
 (library
  (name ape)
- (libraries atdgen re yojson)
- (preprocess
-  (staged_pps ppx_import)))
+ (libraries atdgen-runtime re))
 
 (rule
  (targets config_j.ml config_j.mli)
