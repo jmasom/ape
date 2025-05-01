@@ -2,8 +2,6 @@
 
 (name ape)
 
-(generate_opam_files true)
-
 (source
  (github jmasom/ape))
 
@@ -20,8 +18,8 @@
  (synopsis "Yet another random word generator")
  (description "Ape is a random word generator targeted to conlangers. It supports matchable rules, phonological features, and sound changes.")
  (depends
-  ocaml
-  dune
+  (ocaml
+   (= 5.1.1))
   (atdgen
    (>= 2.15.0))
   (ocamlformat
@@ -32,5 +30,3 @@
   (topics "word generation" conlanging)))
 
 (using menhir 3.0)
-
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
