@@ -20,34 +20,102 @@
 open Utils
 open Flags
 
-type 'j t
+type 'j t constraint 'j = [< any ]
 (** The type of grammars with validity judgement ['j]. *)
 
 (** {1 Construction} *)
 
-(** Type-identified collections of rules. *)
+(** Tables containing segments defined by their representations and feature
+    specifications. *)
+module Segment_table : sig
+  type t
+  (** The type of segment tables. *)
+
+  (** Collections of the features in a segment table. *)
+  module Schema : sig
+    type t
+    (** The type of schemas. *)
+
+    (** Contextualized phonological features. *)
+    module Col : sig
+      type 'sc t
+      (** The type of features constructed in the context of schema ['sc]. *)
+
+      type schema
+
+      val make : sc:('sc, schema) Named.t -> string -> 'sc t
+      (** [make ~sc s] generates a feature from [s] in the semantic context of
+          [Named.unpack sc]. *)
+    end
+    with type schema := t
+
+    val empty : t
+    (** A schema containing no features. *)
+
+    val add : 'sc Col.t -> ('sc, t) Named.t -> t
+    (** [add c nsc] returns a new schema that contains all the features in
+        [Named.unpack nsc] plus [c]. *)
+  end
+
+  (** Contextualized phonological segments. *)
+  module Seg : sig
+    type 'tbl t
+    (** The type of segments constructed in the context of segment table ['tbl].
+    *)
+
+    type seg_tbl
+
+    (** Contextualized segmental representations. *)
+    module Value : sig
+      type 'tbl t
+      (** The type of representations constructed in the context of segment
+          table ['tbl]. *)
+
+      val make : tbl:('tbl, seg_tbl) Named.t -> string -> 'tbl t
+      (** [make ~tbl s] generates a representatiaon from [s] in the semantic
+          context of [Named.unpack tbl]. *)
+    end
+
+    (** Contextualized segmental feature specifications. *)
+    module Spec : sig
+      type 'tbl t
+      (** The type of specifications constructed in the context of segment table
+          ['tbl]. *)
+
+      val make : tbl:('tbl, seg_tbl) Named.t -> bool list -> 'tbl t
+      (** [make ~tbl bs] generates a specification from [bs] in the semantic
+          context of [Named.unpack tbl]. *)
+    end
+
+    val make : 'tbl Value.t * 'tbl Spec.t -> 'tbl t
+    (** [make (v, s)] constructs a segment with representation [v] and feature
+        specification [s]. *)
+  end
+  with type seg_tbl := t
+
+  val with_schema : Schema.t -> t
+  (** [with_schema sc] constructs a segment table with schema [sc]. *)
+
+  val add : 'tbl Seg.t -> ('tbl, t) Named.t -> t
+  (** [add s ntbl] returns a new segment table that contains all the segments in
+      [Named.unpack ntbl] plus [s]. The returned table has the same schema as
+      [Named.unpack ntbl]. *)
+end
+
+(** Collections of rules. *)
 module Rule_bank : sig
-  type 'id t
-  (** The type of rule banks uniquely identified by type ['id]. *)
+  type t
+  (** The type of rule banks. *)
 
   type 'rb idx
   (** The type of the indices in the rule bank ['rb]. *)
-
-  (** A modularly-encoded record containing a rule bank [value] and its
-      identifier [id]. Used as a return type for functions that construct new
-      rule banks. *)
-  module type T = sig
-    type id
-
-    val value : id t
-  end
 
   (** Contextualized word generation rules. *)
   module Rule : sig
     type 'rb t
     (** The type of rules constructed in the context of rule bank ['rb]. *)
 
-    type 'rb rule_bank
+    type rule_bank
 
     (** Contextualized expressions for initial word generation and matching. *)
     module Expr : sig
@@ -55,9 +123,9 @@ module Rule_bank : sig
       (** The type of expressions constructed in the context of rule bank ['rb].
       *)
 
-      val parse_ast : 'rb rule_bank -> Parsing.Expr.ast -> 'rb t
-      (** [parse_ast rb ast] generates an expression from [ast] in the semantic
-          context of [rb]. *)
+      val make : rb:('rb, rule_bank) Named.t -> Parsing.Expr.ast -> 'rb t
+      (** [make ~rb ast] generates an expression from [ast] in the semantic
+          context of [Named.unpack rb]. *)
     end
 
     (** Contextualized operations for replacing matched substrings. *)
@@ -73,9 +141,9 @@ module Rule_bank : sig
         (** The type of replacement operations constructed in the context of
             expression ['ex]. *)
 
-        val parse_ast : ('ex, 'rb Expr.t) Named.t -> Parsing.Repl.ast -> 'ex t
-        (** [parse_ast named_ex ast] generates a replacement from [ast] in the
-            semantic context of [Named.unpack named_ex]. *)
+        val make : ex:('ex, 'rb Expr.t) Named.t -> Parsing.Repl.ast -> 'ex t
+        (** [make ~ex ast] generates a replacement from [ast] in the semantic
+            context of [Named.unpack ex]. *)
       end
 
       val make : ('ex, 'rb Expr.t) Named.t * 'ex Repl.t -> 'rb t
@@ -89,32 +157,31 @@ module Rule_bank : sig
         [expr], rejecting words matched by [excl], and that also matches strings
         with [expr]. *)
   end
-  with type 'id rule_bank := 'id t
+  with type rule_bank := t
 
-  val empty : (module T)
-  (** A packed rule bank containing no rules. *)
+  val with_seg_tbl : Segment_table.t -> t
+  (** [with_seg_tbl tbl] constructs a rule bank with segment table [tbl]. *)
 
-  val add : string -> 'id Rule.t -> 'id t -> (module T)
-  (** [add name r rb] returns a new (packed) rule bank that contains [r] at an
-      index denoted by [name], masking any rule previously stored with [name].
-  *)
+  val add : string -> 'id Rule.t -> ('id, t) Named.t -> t
+  (** [add name r nrb] returns a new rule bank that contains [r] at an index
+      denoted by [name], masking any rule previously stored with [name]. *)
 
-  val get_idx : 'id t -> string -> 'id idx
-  (** [get_idx rb name] returns the abstract index of the rule added with name
+  val get_idx : ('id, t) Named.t -> string -> 'id idx
+  (** [get_idx nrb name] returns the abstract index of the rule added with name
       [name]. *)
 
-  val idx_map_of : 'id t -> 'id idx String_map.t
-  (** [idx_map_of rb] returns a map from names to the indices in [rb]. *)
+  val idx_map_of : ('id, t) Named.t -> 'id idx String_map.t
+  (** [idx_map_of nrb] returns a map from names to the indices in [rb]. *)
 end
 
-val make : 'rb Rule_bank.t * 'rb Rule_bank.idx -> any t
-(** [make rb idx] constructs a grammar whose root is the rule stored in [rb] at
+val make : ('rb, Rule_bank.t) Named.t * 'rb Rule_bank.idx -> any t
+(** [make nrb idx] constructs a grammar whose root is the rule stored in [rb] at
     index [idx]. *)
 
 (** {1 Analysis}*)
 
-val valid : any t -> valid t option
-(** [valid g] returns [Some vg] if [g] is valid, and otherwise returns [None].
+val check : any t -> valid t option
+(** [check g] returns [Some vg] if [g] is valid, and otherwise returns [None].
 *)
 
 val report_errs : any t -> unit
