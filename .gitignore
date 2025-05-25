@@ -1,2 +1,6 @@
+# OCaml artifacts
 _build/
 _opam/
+
+# Local Docker overrides
+docker-compose.override.yml

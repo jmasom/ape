@@ -1,0 +1,35 @@
+services:
+  base:
+    build:
+      context: .
+    image: ape-base
+  build:
+    build:
+      dockerfile_inline: |
+        FROM ape-base
+        COPY . .
+        RUN dune build
+    depends_on:
+        - base
+  dev:
+    build:
+      context: .
+    command: bash
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./README.md:/home/ubuntu/ape/README.md
+      - ./ape.opam:/home/ubuntu/ape/ape.opam
+      - ./ape.opam.locked:/home/ubuntu/ape/ape.opam.locked
+      - ./bin:/home/ubuntu/ape/bin
+      - ./dune-project:/home/ubuntu/ape/dune-project
+      - ./.git:/home/ubuntu/ape/.git
+      - ./.gitignore:/home/ubuntu/ape/.gitignore
+      - ./lib:/home/ubuntu/ape/lib
+      - ./.ocamlformat:/home/ubuntu/ape/.ocamlformat
+      - ./test:/home/ubuntu/ape/test
+      - dev-build:/home/ubuntu/ape/_build
+    depends_on:
+      - base
+volumes:
+  dev-build:
