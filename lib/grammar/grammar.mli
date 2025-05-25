@@ -25,45 +25,46 @@ type 'j t constraint 'j = [< any ]
 
 (** {1 Construction} *)
 
+(** Collections of phonological features. *)
+module Feat_sys : sig
+  type t
+  (** The type of feature systems. *)
+
+  (** Contextualized phonological features. *)
+  module Feat : sig
+    type 'fs t
+    (** The type of features constructed in the context of feature system ['fs].
+    *)
+
+    type feat_sys
+
+    val make : fs:('fs, feat_sys) Named.t -> string -> 'fs t
+    (** [make ~fs s] generates a feature from [s] in the semantic context of
+        [Named.unpack fs]. *)
+  end
+  with type feat_sys := t
+
+  val empty : t
+  (** A feature system containing no features. *)
+
+  val add : 'fs Feat.t -> ('fs, t) Named.t -> t
+  (** [add f nfs] returns a new feature system that contains all the features in
+      [Named.unpack nfs] plus [f]. *)
+end
+
 (** Tables containing segments defined by their representations and feature
     specifications. *)
 module Segment_table : sig
-  type t
+  type 'fs t
   (** The type of segment tables. *)
-
-  (** Collections of the features in a segment table. *)
-  module Schema : sig
-    type t
-    (** The type of schemas. *)
-
-    (** Contextualized phonological features. *)
-    module Col : sig
-      type 'sc t
-      (** The type of features constructed in the context of schema ['sc]. *)
-
-      type schema
-
-      val make : sc:('sc, schema) Named.t -> string -> 'sc t
-      (** [make ~sc s] generates a feature from [s] in the semantic context of
-          [Named.unpack sc]. *)
-    end
-    with type schema := t
-
-    val empty : t
-    (** A schema containing no features. *)
-
-    val add : 'sc Col.t -> ('sc, t) Named.t -> t
-    (** [add c nsc] returns a new schema that contains all the features in
-        [Named.unpack nsc] plus [c]. *)
-  end
 
   (** Contextualized phonological segments. *)
   module Seg : sig
-    type 'tbl t
-    (** The type of segments constructed in the context of segment table ['tbl].
-    *)
+    type 'ctx t constraint 'ctx = < fs : 'fs ; tbl : 'tbl >
+    (** The type of segments constructed in the context of feature system ['fs]
+        and segment table ['tbl]. *)
 
-    type seg_tbl
+    type 'fs seg_tbl
 
     (** Contextualized segmental representations. *)
     module Value : sig
@@ -71,40 +72,46 @@ module Segment_table : sig
       (** The type of representations constructed in the context of segment
           table ['tbl]. *)
 
-      val make : tbl:('tbl, seg_tbl) Named.t -> string -> 'tbl t
+      val make : tbl:('tbl, 'fs seg_tbl) Named.t -> string -> 'tbl t
       (** [make ~tbl s] generates a representatiaon from [s] in the semantic
           context of [Named.unpack tbl]. *)
     end
 
     (** Contextualized segmental feature specifications. *)
     module Spec : sig
-      type 'tbl t
-      (** The type of specifications constructed in the context of segment table
-          ['tbl]. *)
+      type 'ctx t constraint 'ctx = < fs : 'fs ; tbl : 'tbl >
+      (** The type of specifications constructed in the context of feature
+          system ['fs] and segment table ['tbl]. *)
 
-      val make : tbl:('tbl, seg_tbl) Named.t -> bool list -> 'tbl t
-      (** [make ~tbl bs] generates a specification from [bs] in the semantic
-          context of [Named.unpack tbl]. *)
+      val make :
+        fs:('fs, Feat_sys.t) Named.t ->
+        tbl:('tbl, 'fs seg_tbl) Named.t ->
+        bool list ->
+        < fs : 'fs ; tbl : 'tbl > t
+      (** [make ~fs ~tbl bs] generates a specification from [bs] in the semantic
+          context of [Named.unpack fs] and [Named.unpack tbl]. *)
     end
 
-    val make : 'tbl Value.t * 'tbl Spec.t -> 'tbl t
-    (** [make (v, s)] constructs a segment with representation [v] and feature
-        specification [s]. *)
+    val make :
+      'tbl Value.t * < fs : 'fs ; tbl : 'tbl > Spec.t * float ->
+      < fs : 'fs ; tbl : 'tbl > t
+    (** [make (v, s, w)] constructs a segment with representation [v], feature
+        specification [s], and weight [w]. *)
   end
-  with type seg_tbl := t
+  with type 'fs seg_tbl := 'fs t
 
-  val with_schema : Schema.t -> t
-  (** [with_schema sc] constructs a segment table with schema [sc]. *)
+  val empty : 'fs t
+  (** A segment table containing no segments. *)
 
-  val add : 'tbl Seg.t -> ('tbl, t) Named.t -> t
+  val add : < fs : 'fs ; tbl : 'tbl > Seg.t -> ('tbl, 'fs t) Named.t -> 'fs t
   (** [add s ntbl] returns a new segment table that contains all the segments in
-      [Named.unpack ntbl] plus [s]. The returned table has the same schema as
-      [Named.unpack ntbl]. *)
+      [Named.unpack ntbl] plus [s]. The returned table has the same feature
+      system as [Named.unpack ntbl]. *)
 end
 
 (** Collections of rules. *)
 module Rule_bank : sig
-  type t
+  type 'fs t
   (** The type of rule banks. *)
 
   type 'rb idx
@@ -112,73 +119,92 @@ module Rule_bank : sig
 
   (** Contextualized word generation rules. *)
   module Rule : sig
-    type 'rb t
-    (** The type of rules constructed in the context of rule bank ['rb]. *)
+    type 'ctx t constraint 'ctx = < fs : 'fs ; rb : 'rb >
+    (** The type of rules constructed in the context of feature system ['fs] and
+        rule bank ['rb]. *)
 
-    type rule_bank
+    type 'fs rule_bank
 
     (** Contextualized expressions for initial word generation and matching. *)
     module Expr : sig
-      type 'rb t
-      (** The type of expressions constructed in the context of rule bank ['rb].
-      *)
+      type 'ctx t constraint 'ctx = < fs : 'fs ; rb : 'rb >
+      (** The type of expressions constructed in the context of feature system
+          ['fs] and rule bank ['rb]. *)
 
-      val make : rb:('rb, rule_bank) Named.t -> Parsing.Expr.ast -> 'rb t
-      (** [make ~rb ast] generates an expression from [ast] in the semantic
-          context of [Named.unpack rb]. *)
+      val make :
+        fs:('fs, Feat_sys.t) Named.t ->
+        rb:('rb, 'fs rule_bank) Named.t ->
+        Parsing.Expr.ast ->
+        < fs : 'fs ; rb : 'rb > t
+      (** [make ~fs ~rb ast] generates an expression from [ast] in the semantic
+          context of [Named.unpack fs] and [Named.unpack rb]. *)
     end
 
     (** Contextualized operations for replacing matched substrings. *)
     module Rewrite : sig
-      type 'rb t
-      (** The type of rewrite operations constructed in the context of rule bank
-          ['rb]. *)
+      type 'ctx t constraint 'ctx = < fs : 'fs ; rb : 'rb >
+      (** The type of rewrite operations constructed in the context of feature
+          system ['fs] and rule bank ['rb]. *)
 
       (** Contextualized replacement operations to perform on a matched
           substring. *)
       module Repl : sig
-        type 'ex t
+        type 'ctx t constraint 'ctx = < fs : 'fs ; ex : 'ex >
         (** The type of replacement operations constructed in the context of
-            expression ['ex]. *)
+            feature system ['fs] and expression ['ex]. *)
 
-        val make : ex:('ex, 'rb Expr.t) Named.t -> Parsing.Repl.ast -> 'ex t
-        (** [make ~ex ast] generates a replacement from [ast] in the semantic
-            context of [Named.unpack ex]. *)
+        val make :
+          fs:('fs, Feat_sys.t) Named.t ->
+          ex:('ex, < fs : 'fs ; rb : 'rb > Expr.t) Named.t ->
+          Parsing.Repl.ast ->
+          < fs : 'fs ; ex : 'ex > t
+        (** [make ~fs ~ex ast] generates a replacement from [ast] in the
+            semantic context of [Named.unpack fs] and [Named.unpack ex]. *)
       end
 
-      val make : ('ex, 'rb Expr.t) Named.t * 'ex Repl.t -> 'rb t
-      (** [make named_ex r] constructs a rewrite that applies [r] to matching
-          occurrences of [Named.unpack named_ex]. *)
+      val make :
+        ('ex, < fs : 'fs ; rb : 'rb > Expr.t) Named.t
+        * < fs : 'fs ; ex : 'ex > Repl.t ->
+        < fs : 'fs ; rb : 'rb > t
+      (** [make (nex, r)] constructs a rewrite that applies [r] to matching
+          occurrences of [Named.unpack nex]. *)
     end
 
-    val make : 'rb Expr.t * 'rb Rewrite.t list * 'rb Expr.t -> 'rb t
+    val make :
+      < fs : 'fs ; rb : 'rb > Expr.t
+      * < fs : 'fs ; rb : 'rb > Rewrite.t list
+      * < fs : 'fs ; rb : 'rb > Expr.t ->
+      < fs : 'fs ; rb : 'rb > t
     (** [make (expr, rws, excl)] constructs a rule that generates words by
         sequentially applying each of [rws] to an initial word generated from
         [expr], rejecting words matched by [excl], and that also matches strings
         with [expr]. *)
   end
-  with type rule_bank := t
+  with type 'fs rule_bank := 'fs t
 
-  val with_seg_tbl : Segment_table.t -> t
-  (** [with_seg_tbl tbl] constructs a rule bank with segment table [tbl]. *)
+  val empty : 'fs t
+  (** A rule bank containing no rules. *)
 
-  val add : string -> 'id Rule.t -> ('id, t) Named.t -> t
+  val add :
+    string -> < fs : 'fs ; rb : 'rb > Rule.t -> ('rb, 'fs t) Named.t -> 'fs t
   (** [add name r nrb] returns a new rule bank that contains [r] at an index
       denoted by [name], masking any rule previously stored with [name]. *)
 
-  val get_idx : ('id, t) Named.t -> string -> 'id idx
+  val get_idx : ('rb, 'fs t) Named.t -> string -> 'rb idx
   (** [get_idx nrb name] returns the abstract index of the rule added with name
       [name]. *)
 
-  val idx_map_of : ('id, t) Named.t -> 'id idx String_map.t
+  val idx_map_of : ('rb, 'fs t) Named.t -> 'rb idx String_map.t
   (** [idx_map_of nrb] returns a map from names to the indices in [rb]. *)
 end
 
-val make : ('rb, Rule_bank.t) Named.t * 'rb Rule_bank.idx -> any t
-(** [make nrb idx] constructs a grammar whose root is the rule stored in [rb] at
-    index [idx]. *)
+val make :
+  'fs Segment_table.t * ('rb, 'fs Rule_bank.t) Named.t * 'rb Rule_bank.idx ->
+  any t
+(** [make (st, nrb, idx)] constructs a grammar whose root is the rule stored in
+    [Named.unpack nrb] at index [idx], using segment table [st]. *)
 
-(** {1 Analysis}*)
+(** {1 Analysis} *)
 
 val check : any t -> valid t option
 (** [check g] returns [Some vg] if [g] is valid, and otherwise returns [None].

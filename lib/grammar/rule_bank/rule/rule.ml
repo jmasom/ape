@@ -6,21 +6,37 @@ module Make (Rb : RULE_BANK) = struct
   module E = Expr.Make (Rb)
   module Rw = Rewrite.Make (E)
 
-  type +'j t =
+  type (+'ctx, +'j) t =
     | Valid of {
-        expr : valid E.t;
-        rewrites : valid Rw.t list;
-        excl : valid E.t;
+        expr : (< >, valid) E.t;
+        rewrites : (< >, valid) Rw.t list;
+        excl : (< >, valid) E.t;
       }
-    | Invalid of { expr : any E.t; rewrites : any Rw.t list; excl : any E.t }
-    constraint 'j = [< any ]
+    | Invalid of {
+        expr : (< >, any) E.t;
+        rewrites : (< >, any) Rw.t list;
+        excl : (< >, any) E.t;
+      }
+    constraint 'ctx = < .. > constraint 'j = [< any ]
 
   let check = function Valid _ as v -> Some v | Invalid _ -> None
 
   let make (expr, rewrites, excl) =
     match (E.check expr, for_all_map Rw.check rewrites, E.check excl) with
-    | Some expr, Some rewrites, Some excl -> Valid { expr; rewrites; excl }
-    | _, _, _ -> Invalid { expr; rewrites; excl }
+    | Some expr, Some rewrites, Some excl ->
+        Valid
+          {
+            expr :> (< >, valid) E.t;
+            rewrites :> (< >, valid) Rw.t list;
+            excl :> (< >, valid) E.t;
+          }
+    | _, _, _ ->
+        Invalid
+          {
+            expr :> (< >, any) E.t;
+            rewrites :> (< >, any) Rw.t list;
+            excl :> (< >, any) E.t;
+          }
 
   let compile rb = function
     | Invalid _ -> assert false
@@ -53,12 +69,12 @@ module Make (Rb : RULE_BANK) = struct
   module Expr = struct
     include E
 
-    type t = any E.t
+    type 'ctx t = ('ctx, any) E.t constraint 'ctx = < fs : 'fs ; rb : 'rb >
   end
 
   module Rewrite = struct
     include Rw
 
-    type t = any Rw.t
+    type 'ctx t = ('ctx, any) Rw.t constraint 'ctx = < fs : 'fs ; rb : 'rb >
   end
 end

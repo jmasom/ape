@@ -3,26 +3,26 @@ open Flags
 open Module_types
 
 module Make (Rb : RULE_BANK) = struct
-  type +'j node =
+  type (+'ctx, +'j) node =
     | ELiteral of string
     | ERule_idx of 'j Rb.Idx.t
-    | ELabeled of string * 'j t
-    | EOpt of 'j t * float
-    | ERep of 'j t * int * int
-    | EChoice of ('j t * float) list
-    | ESeq of 'j t list
-    constraint 'j = [< any ]
+    | ELabeled of string * ('ctx, 'j) t
+    | EOpt of ('ctx, 'j) t * float
+    | ERep of ('ctx, 'j) t * int * int
+    | EChoice of (('ctx, 'j) t * float) list
+    | ESeq of ('ctx, 'j) t list
+    constraint 'ctx = < .. > constraint 'j = [< any ]
 
-  and +'j t =
-    | Valid of valid node
-    | Invalid of any node
-    constraint 'j = [< any ]
+  and (+'ctx, +'j) t =
+    | Valid of ('ctx, valid) node
+    | Invalid of ('ctx, any) node
+    constraint 'ctx = < .. > constraint 'j = [< any ]
 
   type 'ex idx = int
 
   let check = function Valid _ as v -> Some v | Invalid _ -> None
 
-  let rec make ~rb =
+  let rec make ~fs ~rb =
     Types.(
       function
       | Texpr_literal s -> Valid (ELiteral s)
@@ -33,12 +33,12 @@ module Make (Rb : RULE_BANK) = struct
           | Some vidx -> Valid (ERule_idx vidx)
           | None -> Invalid (ERule_idx idx))
       | Texpr_labeled (l, ast) -> (
-          match make ~rb ast with
+          match make ~fs ~rb ast with
           | Valid _ as ve -> Valid (ELabeled (l, ve))
           | Invalid _ as e -> Invalid (ELabeled (l, e)))
       | Texpr_optional (ast, prob) -> (
           let prob = prob |? 0.5 in
-          match make ~rb ast with
+          match make ~fs ~rb ast with
           | Valid _ as ve -> Valid (EOpt (ve, prob))
           | Invalid _ as e -> Invalid (EOpt (e, prob)))
       | Texpr_repeated (ast, bounds) -> (
@@ -47,7 +47,7 @@ module Make (Rb : RULE_BANK) = struct
             | Trb_range (lo, hi) -> (lo |? 0, hi)
             | Trb_count n -> (n, n)
           in
-          match make ~rb ast with
+          match make ~fs ~rb ast with
           | Valid _ as ve -> Valid (ERep (ve, lo, hi))
           | Invalid _ as e -> Invalid (ERep (e, lo, hi)))
       | Texpr_choice wasts -> (
@@ -56,21 +56,23 @@ module Make (Rb : RULE_BANK) = struct
             | (Valid _, _) as wv -> Some wv
             | Invalid _, _ -> None
           in
-          let parse_wast (ast, w) = (make ~rb ast, w |? 1.) in
+          let parse_wast (ast, w) = (make ~fs ~rb ast, w |? 1.) in
           (* Parse subnodes *)
           let wes = List.map parse_wast wasts in
           match for_all_map wvalid wes with
           | Some vwes -> Valid (EChoice vwes)
           | None -> Invalid (EChoice wes))
       | Texpr_seq asts -> (
-          let es = List.map (make ~rb) asts in
+          let es = List.map (make ~fs ~rb) asts in
           match for_all_map check es with
           | Some ves -> Valid (ESeq ves)
           | None -> Invalid (ESeq es)))
 
   (* Can this be memoized or embedded in the node? *)
   let rec get_labels e =
-    let n = match e with Valid vn -> (vn :> any node) | Invalid n -> n in
+    let n =
+      match e with Valid vn -> (vn :> ('ctx, any) node) | Invalid n -> n
+    in
     match n with
     | ELiteral _ | ERule_idx _ | EOpt _ | ERep _ | EChoice _ -> []
     | ELabeled (l, _) -> [ l ]

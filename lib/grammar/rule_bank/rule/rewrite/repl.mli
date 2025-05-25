@@ -3,9 +3,14 @@ open Flags
 open Module_types
 
 module Make (E : EXPR) : sig
-  type +'j t constraint 'j = [< any ]
+  type (+'ctx, +'j) t constraint 'ctx = < .. > constraint 'j = [< any ]
 
-  val make : ex:('ex, any E.t) Named.t -> Parsing.Repl.ast -> any t
-  val check : any t -> valid t option
-  val compile : valid t -> Re.Group.t -> string
+  val make :
+    fs:('fs, any Feat_sys.t) Named.t ->
+    ex:('ex, (< fs : 'fs ; rb : 'rb >, any) E.t) Named.t ->
+    Parsing.Repl.ast ->
+    (< fs : 'fs ; ex : 'ex >, any) t
+
+  val check : ('ctx, any) t -> ('ctx, valid) t option
+  val compile : (_, valid) t -> Re.Group.t -> string
 end
