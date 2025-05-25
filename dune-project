@@ -1,6 +1,8 @@
-(lang dune 3.16)
+(lang dune 3.18)
 
 (name ape)
+
+(generate_opam_files true)
 
 (source
  (github jmasom/ape))
@@ -21,11 +23,7 @@
   (ocaml
    (= 5.1.1))
   (atdgen
-   (>= 2.15.0))
-  (ocamlformat
-   (and
-    (>= 0.26.2)
-    :build)))
+   (>= 2.15.0)))
  (tags
   (topics "word generation" conlanging)))
 
